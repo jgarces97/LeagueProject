@@ -5,7 +5,7 @@ from random import sample
 import os
 
 connector = Connector()
-API_KEY = 'RGAPI-3d216f49-a2ac-480b-89f6-60ee79c6aa56'
+API_KEY = 'RGAPI-8275b631-142e-415c-b7b1-3afa55cd7709'
 
 
 async def random_items(champ):
@@ -88,6 +88,21 @@ def random_runes():
 
     return rune_page
 
+def random_sums():
+
+    with open('summoner_spell_ids.json') as f:
+        sums = json.load(f)
+    rand_sums = sample(sums['Spells'],2)
+
+    selections = {"selectedSkinId": 0,
+                   "spell1Id": rand_sums[0],
+                   "spell2Id": rand_sums[1],
+                   "wardSkinId": 0
+                    }
+    return selections
+
+async def set_sums(connection):
+    set_sums_request = await connection.request('patch', '/lol-champ-select/v1/session/my-selection', data = random_sums())
 
 async def lockin(connection):
 
@@ -153,7 +168,7 @@ async def connect(connection):
     # check if the user is already logged into his account
     summoner = await connection.request('get', '/lol-summoner/v1/current-summoner', data={'api_key': API_KEY})
     if summoner.status != 200:
-        print('Please login into your account to change your icon and restart the script...')
+        print('Please login into your account')
     else:
         print('Client Connected')
         print('Locking in Random Champ')
@@ -164,6 +179,10 @@ async def connect(connection):
         await set_rune_page(connection)
         bad_req = await connection.request('get', '/data-store/v1/install-dir', data={'api_key': API_KEY})
         print(await bad_req.json())
+        print('Setting random summoner Spells')
+        await set_sums(connection)
+        bad_req = await connection.request('get', '/data-store/v1/install-dir', data={'api_key': API_KEY})
+        print(bad_req)
         print('Importing Random Item Page')
         await set_item_page(champ)
         bad_req = await connection.request('get', '/data-store/v1/install-dir', data={'api_key': API_KEY})
