@@ -1,11 +1,11 @@
 import random
 from lcu_driver import Connector
 import json
-from random import sample
+from random import sample, choice
 import os
 
 connector = Connector()
-API_KEY = 'RGAPI-8275b631-142e-415c-b7b1-3afa55cd7709'
+API_KEY = 'RGAPI-ab989dc0-2389-47a1-a4ba-570d8ee68fea'
 
 
 async def random_items(champ):
@@ -88,21 +88,37 @@ def random_runes():
 
     return rune_page
 
-def random_sums():
+def random_sums(role):
 
     with open('summoner_spell_ids.json') as f:
         sums = json.load(f)
-    rand_sums = sample(sums['Spells'],2)
 
-    selections = {"selectedSkinId": 0,
-                   "spell1Id": rand_sums[0],
-                   "spell2Id": rand_sums[1],
-                   "wardSkinId": 0
-                    }
-    return selections
+    if role == "jungle":
+        sum1 = 11
+        sum2 = choice(sums['Spells'])
+    else:
+        rand_sums = sample(sums['Spells'], 2)
+        sum1 = rand_sums[0]
+        sum2 = rand_sums[1]
+
+    return {
+            "selectedSkinId": 0,
+            "spell1Id": sum1,
+            "spell2Id": sum2,
+            "wardSkinId": 0
+            }
+
 
 async def set_sums(connection):
-    set_sums_request = await connection.request('patch', '/lol-champ-select/v1/session/my-selection', data = random_sums())
+    session = await connection.request('get', '/lol-champ-select/v1/session', data={'api_key': API_KEY})
+    role = "notjung"
+    if session.status == 200:
+        sessionjson = await session.json()
+        mycellId = sessionjson['localPlayerCellId']
+        for i in sessionjson['myTeam']:
+            if i['cellId'] == mycellId:
+                role = i['assignedPosition']
+    set_sums_request = await connection.request('patch', '/lol-champ-select/v1/session/my-selection', data = random_sums(role))
 
 async def lockin(connection):
 
@@ -152,12 +168,12 @@ async def set_item_page(champ_id):
         champs = json.load(f)
 
     random_build = await random_items(champs[str(champ_id)])
-    if not os.path.exists('C:\\Riot Games\\League of Legends\\Config\\Champions\\'+ champs[str(champ_id)]
+    if not os.path.exists('D:\\Games\\League of Legends\\Config\\Champions\\'+ champs[str(champ_id)]
                           + '\\Recommended'):
-        os.makedirs('C:\\Riot Games\\League of Legends\\Config\\Champions\\'+ champs[str(champ_id)]
+        os.makedirs('D:\\Games\\League of Legends\\Config\\Champions\\'+ champs[str(champ_id)]
                     + '\\Recommended')
 
-    with open('C:\\Riot Games\\League of Legends\\Config\\Champions\\'+ champs[str(champ_id)]
+    with open('D:\\Games\\League of Legends\\Config\\Champions\\'+ champs[str(champ_id)]
               + '\\Recommended\\JankBuild.json', 'w') as fp:
         json.dump(random_build, fp)
 
@@ -173,20 +189,12 @@ async def connect(connection):
         print('Client Connected')
         print('Locking in Random Champ')
         champ = await lockin(connection)
-        bad_req = await connection.request('get', '/data-store/v1/install-dir', data={'api_key': API_KEY})
-        print(await bad_req.json())
         print('Setting up a random rune page')
         await set_rune_page(connection)
-        bad_req = await connection.request('get', '/data-store/v1/install-dir', data={'api_key': API_KEY})
-        print(await bad_req.json())
         print('Setting random summoner Spells')
         await set_sums(connection)
-        bad_req = await connection.request('get', '/data-store/v1/install-dir', data={'api_key': API_KEY})
-        print(bad_req)
         print('Importing Random Item Page')
         await set_item_page(champ)
-        bad_req = await connection.request('get', '/data-store/v1/install-dir', data={'api_key': API_KEY})
-        print(await bad_req.json())
 
 
 connector.start()
