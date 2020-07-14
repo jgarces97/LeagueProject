@@ -65,9 +65,15 @@ async def random_items(champ):
 
 
 async def set_sums(connection):
-
-    set_sums_request = await connection.request('patch', '/lol-champ-select/v1/session/my-selection',
-                                                data=random_sums('top'))
+    session = await connection.request('get', '/lol-champ-select/v1/session', data={'api_key': API_KEY})
+    role = "notjung"
+    if session.status == 200:
+        sessionjson = await session.json()
+        mycellId = sessionjson['localPlayerCellId']
+        for i in sessionjson['myTeam']:
+            if i['cellId'] == mycellId:
+                role = i['assignedPosition']
+    set_sums_request = await connection.request('patch', '/lol-champ-select/v1/session/my-selection', data = random_sums(role))
 
 
 async def lock_in_champ(connection, turn_id, player_id):
